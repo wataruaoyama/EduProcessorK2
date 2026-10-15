@@ -1,0 +1,35 @@
+# Quartus generated files
+db/
+incremental_db/
+
+# Quartus temporary files
+*.qws
+*.rpt
+*.summary
+*.smsg
+*.done
+
+# Generated output files
+output_files/*
+!output_files/*.sof
+!output_files/*.pof
+
+# Upload preparation folders
+EduProcessor/
+EduProcessorK2/
+
+# macOS
+.DS_Store
+
+# Backup files
+*.bak
+*.zip
+*~
+
+# Temporary directories
+src/greybox_tmp/
+
+# Simulation generated files
+simulation/*/work/
+simulation/*/transcript
+simulation/*/vsim.wlf

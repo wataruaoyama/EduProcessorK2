@@ -1,3 +1,4 @@
+-- SP phase handshake fix, 2026-10-13; base be0d30e.
 --========================================================
 --  Project   : AYME0100
 --  Outline   : 教育用8ビットマイコン(kue-chip2)FPGA
@@ -22,6 +23,7 @@ port(
 	SYSCLK			: in std_logic;
 	CLKEN				: in std_logic;
 	SP					: in std_logic;
+	SP_ACCEPT       : out std_logic;
 	SI					: in std_logic;
 	SS					: in std_logic;
 	CRRY_FLG			: in std_logic;
@@ -72,7 +74,9 @@ signal HLT				: std_logic;
 signal PHASECUT		: std_logic;
 signal PC_LATCH_EN	: std_logic;
 signal DELAY			: std_logic;
-signal DFF				: std_logic_vector(1 downto 0);
+signal DFF				: std_logic_vector(2 downto 0);
+signal PHASE_RUN    : std_logic;
+signal ACCEPT_I     : std_logic;
 signal MAR_EN			: std_logic;
 signal PC_CEN_i		: std_logic;
 
@@ -84,18 +88,26 @@ begin
 	-----------------
 	-- State machine
 	-----------------
-	process(CLKEN,RESET) begin
-		if (RESET = '1') then
-			PRESENT_PHASE <= IDLE;
-		elsif (CLKEN'event and CLKEN = '1') then
-			if ((SS = '1') or (SI = '1') or (SP = '1')) then
-				PRESENT_PHASE <= NEXT_PHASE;
-			else
-				PRESENT_PHASE <= PRESENT_PHASE;
-			end if;
-		end if;
-	end process;
-	
+    -- CLKEN is a SYSCLK-domain enable, never a clock.
+    -- Keep the accepted grant through the delayed PC/MAR update.
+    ACCEPT_I <= CLKEN and (SP or SI or SS);
+    SP_ACCEPT <= CLKEN and SP;
+
+    process(SYSCLK, RESET)
+    begin
+        if RESET = '1' then
+            PRESENT_PHASE <= IDLE;
+            PHASE_RUN <= '0';
+        elsif rising_edge(SYSCLK) then
+            if CLKEN = '1' then
+                PHASE_RUN <= ACCEPT_I;
+                if ACCEPT_I = '1' then
+                    PRESENT_PHASE <= NEXT_PHASE;
+                end if;
+            end if;
+        end if;
+    end process;
+
 	process(PRESENT_PHASE, PHASECUT, HLT) begin
 		case PRESENT_PHASE is
 			when IDLE =>
@@ -894,16 +906,21 @@ begin
 	ENDPHASE <= PHASECUT;
 	HALT <= HLT;
 	
-	process(SYSCLK, RESET) begin
-		if (SYSCLK'event and SYSCLK='1') then
-			DFF(1 downto 0) <= DFF(0) & CLKEN;
-		end if;
-	end process;
-	
-	ADR_EN <= MAR_EN and PC_CEN_i and (SP or SI or SS);
-	PC_CEN_i <= DFF(1);
-	PC_CEN <= PC_CEN_i;
-	
+    -- One extra stage preserves phase-to-PC/MAR timing after
+    -- moving phase advancement onto the following SYSCLK edge.
+    process(SYSCLK, RESET)
+    begin
+        if RESET = '1' then
+            DFF <= "000";
+        elsif rising_edge(SYSCLK) then
+            DFF <= DFF(1 downto 0) & CLKEN;
+        end if;
+    end process;
+
+    ADR_EN <= MAR_EN and PC_CEN_i and PHASE_RUN;
+    PC_CEN_i <= DFF(2);
+    PC_CEN <= PC_CEN_i;
+
 	process(SYSCLK, RESET) begin
 		if (RESET = '1') then
 			DELAY <= '0';
@@ -926,7 +943,7 @@ begin
 				PC_COUNT <= DBI;
 			end if;
 			
-			if ((PC_CEN_i = '1') and ((SS = '1') or (SI = '1') or (SP = '1'))) then
+			if ((PC_CEN_i = '1') and (PHASE_RUN = '1')) then
 				if (PRESENT_PHASE = P0) then
 					if (OP_CODE = "0011") then							-- Bcc
 						PC_COUNT <= PC_COUNT + 1;

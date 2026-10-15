@@ -1,3 +1,4 @@
+-- SP phase handshake fix, 2026-10-13; base be0d30e.
 --========================================================
 --  Project   : AYME0900
 --  Outline   : 教育用8ビットマイコン(kue-chip2)FPGA
@@ -59,6 +60,7 @@ port(
 	CEN					: in std_logic;
 	DEMO					: in std_logic;
 	SP						: in std_logic;
+	SP_ACCEPT       : out std_logic;
 	SI						: in std_logic;
 	SS						: in std_logic;
 	SET					: in std_logic;
@@ -132,7 +134,7 @@ component EXE_CTRL
 port (
 	CLK		: in std_logic;
 	RESET		: in std_logic;
-	CLKEN		: in std_logic;
+	SP_ACCEPT   : in std_logic;
 	HALT		: in std_logic;
 	ENDPHASE	: in std_logic;
 	EXE		: in std_logic_vector(2 downto 0);
@@ -219,6 +221,7 @@ signal IBUF_S 				: std_logic_vector(7 downto 0);
 signal REQ_STB_IN_S 		: std_logic;
 signal FREQ_CHG 			: std_logic_vector(3 downto 0);
 signal PC_CEN				: std_logic;
+signal SP_ACCEPT_I : std_logic;
 signal EX_EN				: std_logic;
 signal EX_WR_RD			: std_logic;
 signal EX_ADR8				: std_logic;
@@ -237,6 +240,7 @@ begin
 			CEN => CEN, 
 			DEMO => DEMO,
 			SP => SP,
+			SP_ACCEPT => SP_ACCEPT_I,
 			SI => SI,
 			SS => SS,
 			SET => SET,
@@ -306,7 +310,7 @@ begin
 	k3: EXE_CTRL port map(
 			CLK => SYSCLK, 
 			RESET => RESET, 
-			CLKEN => PC_CEN, 
+			SP_ACCEPT => SP_ACCEPT_I, 
 			HALT => HALT, 
 			ENDPHASE => ENDPHASE,
 			EXE => EXE, 

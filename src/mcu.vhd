@@ -1,3 +1,4 @@
+-- SP phase handshake fix, 2026-10-13; base be0d30e.
 --========================================================
 --  Project   : AYME0100
 --  Outline   : 教育用8ビットマイコン(kue-chip2)FPGA
@@ -27,6 +28,7 @@ port(
 	CEN					: in std_logic;
 	DEMO					: in std_logic;
 	SP						: in std_logic;
+	SP_ACCEPT       : out std_logic;
 	SI						: in std_logic;
 	SS						: in std_logic;
 	SET					: in std_logic;
@@ -163,6 +165,7 @@ port(
 	SYSCLK			: in std_logic;
 	CLKEN				: in std_logic;
 	SP					: in std_logic;
+	SP_ACCEPT       : out std_logic;
 	SI					: in std_logic;
 	SS					: in std_logic;
 	CRRY_FLG			: in std_logic;
@@ -403,7 +406,8 @@ begin
 		RESET => RESET, 
 		SYSCLK => SYSCLK, 
 		CLKEN => CLKEN, 
-		SP => SP, 
+		SP => SP,
+		SP_ACCEPT => SP_ACCEPT, 
 		SI => SI, 
 		SS => SS,
 		CRRY_FLG => CFOUT, 
